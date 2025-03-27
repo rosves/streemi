@@ -3,7 +3,7 @@
 namespace App\Entity;
 
 use App\Repository\PlaylistMediaRepository;
-use Doctrine\DBAL\Types\Types;
+use DateTimeImmutable;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: PlaylistMediaRepository::class)]
@@ -14,52 +14,54 @@ class PlaylistMedia
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
-    private ?\DateTimeInterface $added_at = null;
+    #[ORM\Column]
+    private ?DateTimeImmutable $addedAt = null;
 
     #[ORM\ManyToOne(inversedBy: 'playlistMedia')]
-    private ?playlist $playlist_id = null;
+    #[ORM\JoinColumn(nullable: false)]
+    private ?Playlist $playlist = null;
 
     #[ORM\ManyToOne(inversedBy: 'playlistMedia')]
-    private ?media $media_id = null;
+    #[ORM\JoinColumn(nullable: false)]
+    private ?Media $media = null;
 
     public function getId(): ?int
     {
         return $this->id;
     }
 
-    public function getAddedAt(): ?\DateTimeInterface
+    public function getAddedAt(): ?DateTimeImmutable
     {
-        return $this->added_at;
+        return $this->addedAt;
     }
 
-    public function setAddedAt(\DateTimeInterface $added_at): static
+    public function setAddedAt(DateTimeImmutable $addedAt): static
     {
-        $this->added_at = $added_at;
+        $this->addedAt = $addedAt;
 
         return $this;
     }
 
-    public function getPlaylistId(): ?playlist
+    public function getPlaylist(): ?Playlist
     {
-        return $this->playlist_id;
+        return $this->playlist;
     }
 
-    public function setPlaylistId(?playlist $playlist_id): static
+    public function setPlaylist(?Playlist $playlist): static
     {
-        $this->playlist_id = $playlist_id;
+        $this->playlist = $playlist;
 
         return $this;
     }
 
-    public function getMediaId(): ?media
+    public function getMedia(): ?Media
     {
-        return $this->media_id;
+        return $this->media;
     }
 
-    public function setMediaId(?media $media_id): static
+    public function setMedia(?Media $media): static
     {
-        $this->media_id = $media_id;
+        $this->media = $media;
 
         return $this;
     }

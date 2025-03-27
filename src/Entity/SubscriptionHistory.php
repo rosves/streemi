@@ -3,7 +3,6 @@
 namespace App\Entity;
 
 use App\Repository\SubscriptionHistoryRepository;
-use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: SubscriptionHistoryRepository::class)]
@@ -14,68 +13,69 @@ class SubscriptionHistory
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(type: Types::DATE_MUTABLE)]
-    private ?\DateTimeInterface $start_date = null;
+    #[ORM\Column]
+    private ?\DateTimeImmutable $startAt = null;
 
-    #[ORM\Column(type: Types::DATE_MUTABLE)]
-    private ?\DateTimeInterface $end_date = null;
-
-    #[ORM\OneToOne(cascade: ['persist', 'remove'])]
-    #[ORM\JoinColumn(nullable: false)]
-    private ?user $user_id = null;
+    #[ORM\Column]
+    private ?\DateTimeImmutable $endAt = null;
 
     #[ORM\ManyToOne(inversedBy: 'subscriptionHistories')]
-    private ?subscription $subscription_id = null;
+    #[ORM\JoinColumn(nullable: false)]
+    private ?User $subscriber = null;
+
+    #[ORM\ManyToOne(inversedBy: 'subscriptionHistories')]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?Subscription $subscription = null;
 
     public function getId(): ?int
     {
         return $this->id;
     }
 
-    public function getStartDate(): ?\DateTimeInterface
+    public function getStartAt(): ?\DateTimeImmutable
     {
-        return $this->start_date;
+        return $this->startAt;
     }
 
-    public function setStartDate(\DateTimeInterface $start_date): static
+    public function setStartAt(\DateTimeImmutable $startAt): static
     {
-        $this->start_date = $start_date;
+        $this->startAt = $startAt;
 
         return $this;
     }
 
-    public function getEndDate(): ?\DateTimeInterface
+    public function getEndAt(): ?\DateTimeImmutable
     {
-        return $this->end_date;
+        return $this->endAt;
     }
 
-    public function setEndDate(\DateTimeInterface $end_date): static
+    public function setEndAt(\DateTimeImmutable $endAt): static
     {
-        $this->end_date = $end_date;
+        $this->endAt = $endAt;
 
         return $this;
     }
 
-    public function getUserId(): ?user
+    public function getSubscriber(): ?User
     {
-        return $this->user_id;
+        return $this->subscriber;
     }
 
-    public function setUserId(user $user_id): static
+    public function setSubscriber(?User $subscriber): static
     {
-        $this->user_id = $user_id;
+        $this->subscriber = $subscriber;
 
         return $this;
     }
 
-    public function getSubscriptionId(): ?subscription
+    public function getSubscription(): ?Subscription
     {
-        return $this->subscription_id;
+        return $this->subscription;
     }
 
-    public function setSubscriptionId(?subscription $subscription_id): static
+    public function setSubscription(?Subscription $subscription): static
     {
-        $this->subscription_id = $subscription_id;
+        $this->subscription = $subscription;
 
         return $this;
     }

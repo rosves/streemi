@@ -2,8 +2,10 @@
 
 namespace App\Entity;
 
-use App\Enum\CommentStatus;
+use App\Enum\CommentStatusEnum;
 use App\Repository\CommentRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -18,19 +20,31 @@ class Comment
     #[ORM\Column(type: Types::TEXT)]
     private ?string $content = null;
 
-    #[ORM\Column(enumType: CommentStatus::class)]
-    private ?CommentStatus $status = null;
+    #[ORM\Column(enumType: CommentStatusEnum::class)]
+    private ?CommentStatusEnum $status = null;
+
+    #[ORM\ManyToOne(targetEntity: self::class, inversedBy: 'childComments')]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'CASCADE')]
+    private ?self $parentComment = null;
+
+    /**
+     * @var Collection<int, self>
+     */
+    #[ORM\OneToMany(targetEntity: self::class, mappedBy: 'parentComment')]
+    private Collection $childComments;
 
     #[ORM\ManyToOne(inversedBy: 'comments')]
     #[ORM\JoinColumn(nullable: false)]
-    private ?user $user_id = null;
+    private ?User $publisher = null;
 
-    #[ORM\OneToOne(cascade: ['persist', 'remove'])]
+    #[ORM\ManyToOne(inversedBy: 'comments')]
     #[ORM\JoinColumn(nullable: false)]
-    private ?media $media_id = null;
+    private ?Media $media = null;
 
-    #[ORM\ManyToOne(targetEntity: self::class, inversedBy: 'parent_comment_id')]
-    private ?self $child_comment = null;
+    public function __construct()
+    {
+        $this->childComments = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
@@ -49,50 +63,80 @@ class Comment
         return $this;
     }
 
-    public function getStatus(): ?CommentStatus
+    public function getStatus(): ?CommentStatusEnum
     {
         return $this->status;
     }
 
-    public function setStatus(CommentStatus $status): static
+    public function setStatus(CommentStatusEnum $status): static
     {
         $this->status = $status;
 
         return $this;
     }
 
-    public function getUserId(): ?user
+    public function getParentComment(): ?self
     {
-        return $this->user_id;
+        return $this->parentComment;
     }
 
-    public function setUserId(?user $user_id): static
+    public function setParentComment(?self $parentComment): static
     {
-        $this->user_id = $user_id;
+        $this->parentComment = $parentComment;
 
         return $this;
     }
 
-    public function getMediaId(): ?media
+    /**
+     * @return Collection<int, self>
+     */
+    public function getChildComments(): Collection
     {
-        return $this->media_id;
+        return $this->childComments;
     }
 
-    public function setMediaId(media $media_id): static
+    public function addChildComment(self $childComment): static
     {
-        $this->media_id = $media_id;
+        if (!$this->childComments->contains($childComment)) {
+            $this->childComments->add($childComment);
+            $childComment->setParentComment($this);
+        }
 
         return $this;
     }
 
-    public function getChildComment(): ?self
+    public function removeChildComment(self $childComment): static
     {
-        return $this->child_comment;
+        if ($this->childComments->removeElement($childComment)) {
+            // set the owning side to null (unless already changed)
+            if ($childComment->getParentComment() === $this) {
+                $childComment->setParentComment(null);
+            }
+        }
+
+        return $this;
     }
 
-    public function setChildComment(?self $child_comment): static
+    public function getPublisher(): ?User
     {
-        $this->child_comment = $child_comment;
+        return $this->publisher;
+    }
+
+    public function setPublisher(?User $publisher): static
+    {
+        $this->publisher = $publisher;
+
+        return $this;
+    }
+
+    public function getMedia(): ?Media
+    {
+        return $this->media;
+    }
+
+    public function setMedia(?Media $media): static
+    {
+        $this->media = $media;
 
         return $this;
     }

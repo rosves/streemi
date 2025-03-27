@@ -2,11 +2,14 @@
 
 namespace App\Entity;
 
-use App\Enum\AccountStatus;
+use App\Enum\UserAccountStatusEnum;
 use App\Repository\UserRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
+use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
+use Symfony\Component\Security\Core\User\UserInterface;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\Table(name: '`user`')]
@@ -17,7 +20,7 @@ class User
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(length: 100)]
+    #[ORM\Column(length: 255)]
     private ?string $username = null;
 
     #[ORM\Column(length: 255)]
@@ -26,35 +29,64 @@ class User
     #[ORM\Column(length: 255)]
     private ?string $password = null;
 
-    #[ORM\Column(enumType: AccountStatus::class)]
-    private ?AccountStatus $account_status = null;
+    private string $plainPassword = '';
 
-    #[ORM\ManyToOne(inversedBy: 'user_id')]
-    private ?Playlist $playlist = null;
+    #[ORM\Column(enumType: UserAccountStatusEnum::class)]
+    private ?UserAccountStatusEnum $accountStatus = UserAccountStatusEnum::INACTIVE;
 
-    #[ORM\OneToOne(cascade: ['persist', 'remove'])]
-    #[ORM\JoinColumn(nullable: false)]
-    private ?subscription $current_subscription_id = null;
+    #[ORM\ManyToOne(inversedBy: 'users')]
+    private ?Subscription $currentSubscription = null;
 
     /**
      * @var Collection<int, Comment>
      */
-    #[ORM\OneToMany(targetEntity: Comment::class, mappedBy: 'user_id', orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: Comment::class, mappedBy: 'publisher')]
     private Collection $comments;
+
+    #[ORM\Column(length: 255)]
+    private ?string $profilePicture = '';
+
+    /**
+     * @var Collection<int, Playlist>
+     */
+    #[ORM\OneToMany(targetEntity: Playlist::class, mappedBy: 'creator')]
+    private Collection $playlists;
 
     /**
      * @var Collection<int, PlaylistSubscription>
      */
-    #[ORM\OneToMany(targetEntity: PlaylistSubscription::class, mappedBy: 'user_id')]
+    #[ORM\OneToMany(targetEntity: PlaylistSubscription::class, mappedBy: 'subscriber')]
     private Collection $playlistSubscriptions;
 
-    #[ORM\OneToOne(mappedBy: 'user_id', cascade: ['persist', 'remove'])]
-    private ?WatchHistory $watchHistory = null;
+    /**
+     * @var Collection<int, SubscriptionHistory>
+     */
+    #[ORM\OneToMany(targetEntity: SubscriptionHistory::class, mappedBy: 'subscriber')]
+    private Collection $subscriptionHistories;
+
+    /**
+     * @var Collection<int, WatchHistory>
+     */
+    #[ORM\OneToMany(targetEntity: WatchHistory::class, mappedBy: 'watcher')]
+    private Collection $watchHistories;
+
+    /**
+     * @var Collection<int, Upload>
+     */
+    #[ORM\OneToMany(targetEntity: Upload::class, mappedBy: 'uploadedBy')]
+    private Collection $uploads;
+
+    #[ORM\Column]
+    private array $roles = [];
 
     public function __construct()
     {
         $this->comments = new ArrayCollection();
+        $this->playlists = new ArrayCollection();
         $this->playlistSubscriptions = new ArrayCollection();
+        $this->subscriptionHistories = new ArrayCollection();
+        $this->watchHistories = new ArrayCollection();
+        $this->uploads = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -98,38 +130,26 @@ class User
         return $this;
     }
 
-    public function getAccountStatus(): ?AccountStatus
+    public function getAccountStatus(): ?UserAccountStatusEnum
     {
-        return $this->account_status;
+        return $this->accountStatus;
     }
 
-    public function setAccountStatus(AccountStatus $account_status): static
+    public function setAccountStatus(UserAccountStatusEnum $accountStatus): static
     {
-        $this->account_status = $account_status;
+        $this->accountStatus = $accountStatus;
 
         return $this;
     }
 
-    public function getPlaylist(): ?Playlist
+    public function getCurrentSubscription(): ?Subscription
     {
-        return $this->playlist;
+        return $this->currentSubscription;
     }
 
-    public function setPlaylist(?Playlist $playlist): static
+    public function setCurrentSubscription(?Subscription $currentSubscription): static
     {
-        $this->playlist = $playlist;
-
-        return $this;
-    }
-
-    public function getCurrentSubscriptionId(): ?subscription
-    {
-        return $this->current_subscription_id;
-    }
-
-    public function setCurrentSubscriptionId(subscription $current_subscription_id): static
-    {
-        $this->current_subscription_id = $current_subscription_id;
+        $this->currentSubscription = $currentSubscription;
 
         return $this;
     }
@@ -146,7 +166,7 @@ class User
     {
         if (!$this->comments->contains($comment)) {
             $this->comments->add($comment);
-            $comment->setUserId($this);
+            $comment->setPublisher($this);
         }
 
         return $this;
@@ -156,8 +176,50 @@ class User
     {
         if ($this->comments->removeElement($comment)) {
             // set the owning side to null (unless already changed)
-            if ($comment->getUserId() === $this) {
-                $comment->setUserId(null);
+            if ($comment->getPublisher() === $this) {
+                $comment->setPublisher(null);
+            }
+        }
+
+        return $this;
+    }
+
+    public function getProfilePicture(): ?string
+    {
+        return $this->profilePicture;
+    }
+
+    public function setProfilePicture(string $profilePicture): static
+    {
+        $this->profilePicture = $profilePicture;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Playlist>
+     */
+    public function getPlaylists(): Collection
+    {
+        return $this->playlists;
+    }
+
+    public function addPlaylist(Playlist $playlist): static
+    {
+        if (!$this->playlists->contains($playlist)) {
+            $this->playlists->add($playlist);
+            $playlist->setCreator($this);
+        }
+
+        return $this;
+    }
+
+    public function removePlaylist(Playlist $playlist): static
+    {
+        if ($this->playlists->removeElement($playlist)) {
+            // set the owning side to null (unless already changed)
+            if ($playlist->getCreator() === $this) {
+                $playlist->setCreator(null);
             }
         }
 
@@ -176,7 +238,7 @@ class User
     {
         if (!$this->playlistSubscriptions->contains($playlistSubscription)) {
             $this->playlistSubscriptions->add($playlistSubscription);
-            $playlistSubscription->setUserId($this);
+            $playlistSubscription->setSubscriber($this);
         }
 
         return $this;
@@ -186,32 +248,100 @@ class User
     {
         if ($this->playlistSubscriptions->removeElement($playlistSubscription)) {
             // set the owning side to null (unless already changed)
-            if ($playlistSubscription->getUserId() === $this) {
-                $playlistSubscription->setUserId(null);
+            if ($playlistSubscription->getSubscriber() === $this) {
+                $playlistSubscription->setSubscriber(null);
             }
         }
 
         return $this;
     }
 
-    public function getWatchHistory(): ?WatchHistory
+    /**
+     * @return Collection<int, SubscriptionHistory>
+     */
+    public function getSubscriptionHistories(): Collection
     {
-        return $this->watchHistory;
+        return $this->subscriptionHistories;
     }
 
-    public function setWatchHistory(?WatchHistory $watchHistory): static
+    public function addSubscriptionHistory(SubscriptionHistory $subscriptionHistory): static
     {
-        // unset the owning side of the relation if necessary
-        if ($watchHistory === null && $this->watchHistory !== null) {
-            $this->watchHistory->setUserId(null);
+        if (!$this->subscriptionHistories->contains($subscriptionHistory)) {
+            $this->subscriptionHistories->add($subscriptionHistory);
+            $subscriptionHistory->setSubscriber($this);
         }
 
-        // set the owning side of the relation if necessary
-        if ($watchHistory !== null && $watchHistory->getUserId() !== $this) {
-            $watchHistory->setUserId($this);
+        return $this;
+    }
+
+    public function removeSubscriptionHistory(SubscriptionHistory $subscriptionHistory): static
+    {
+        if ($this->subscriptionHistories->removeElement($subscriptionHistory)) {
+            // set the owning side to null (unless already changed)
+            if ($subscriptionHistory->getSubscriber() === $this) {
+                $subscriptionHistory->setSubscriber(null);
+            }
         }
 
-        $this->watchHistory = $watchHistory;
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, WatchHistory>
+     */
+    public function getWatchHistories(): Collection
+    {
+        return $this->watchHistories;
+    }
+
+    public function addWatchHistory(WatchHistory $watchHistory): static
+    {
+        if (!$this->watchHistories->contains($watchHistory)) {
+            $this->watchHistories->add($watchHistory);
+            $watchHistory->setWatcher($this);
+        }
+
+        return $this;
+    }
+
+    public function removeWatchHistory(WatchHistory $watchHistory): static
+    {
+        if ($this->watchHistories->removeElement($watchHistory)) {
+            // set the owning side to null (unless already changed)
+            if ($watchHistory->getWatcher() === $this) {
+                $watchHistory->setWatcher(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Upload>
+     */
+    public function getUploads(): Collection
+    {
+        return $this->uploads;
+    }
+
+    public function addUpload(Upload $upload): static
+    {
+        if (!$this->uploads->contains($upload)) {
+            $this->uploads->add($upload);
+            $upload->setUploadedBy($this);
+        }
+
+        return $this;
+    }
+
+    public function removeUpload(Upload $upload): static
+    {
+        if ($this->uploads->removeElement($upload)) {
+            // set the owning side to null (unless already changed)
+            if ($upload->getUploadedBy() === $this) {
+                $upload->setUploadedBy(null);
+            }
+        }
 
         return $this;
     }

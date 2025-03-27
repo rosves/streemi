@@ -3,7 +3,6 @@
 namespace App\Entity;
 
 use App\Repository\EpisodeRepository;
-use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: EpisodeRepository::class)]
@@ -17,15 +16,15 @@ class Episode
     #[ORM\Column(length: 255)]
     private ?string $title = null;
 
-    #[ORM\Column(type: Types::TIME_MUTABLE, nullable: true)]
-    private ?\DateTimeInterface $duration = null;
+    #[ORM\Column]
+    private ?int $duration = null;
 
-    #[ORM\Column(type: Types::DATE_MUTABLE, nullable: true)]
-    private ?\DateTimeInterface $release_date = null;
+    #[ORM\Column]
+    private ?\DateTimeImmutable $releasedAt = null;
 
-    #[ORM\OneToOne(cascade: ['persist', 'remove'])]
+    #[ORM\ManyToOne(inversedBy: 'episodes')]
     #[ORM\JoinColumn(nullable: false)]
-    private ?season $season_id = null;
+    private ?Season $season = null;
 
     public function getId(): ?int
     {
@@ -44,38 +43,38 @@ class Episode
         return $this;
     }
 
-    public function getDuration(): ?\DateTimeInterface
+    public function getDuration(): ?int
     {
         return $this->duration;
     }
 
-    public function setDuration(?\DateTimeInterface $duration): static
+    public function setDuration(int $duration): static
     {
         $this->duration = $duration;
 
         return $this;
     }
 
-    public function getReleaseDate(): ?\DateTimeInterface
+    public function getReleasedAt(): ?\DateTimeImmutable
     {
-        return $this->release_date;
+        return $this->releasedAt;
     }
 
-    public function setReleaseDate(?\DateTimeInterface $release_date): static
+    public function setReleasedAt(\DateTimeImmutable $releasedAt): static
     {
-        $this->release_date = $release_date;
+        $this->releasedAt = $releasedAt;
 
         return $this;
     }
 
-    public function getSeasonId(): ?season
+    public function getSeason(): ?Season
     {
-        return $this->season_id;
+        return $this->season;
     }
 
-    public function setSeasonId(season $season_id): static
+    public function setSeason(?Season $season): static
     {
-        $this->season_id = $season_id;
+        $this->season = $season;
 
         return $this;
     }
