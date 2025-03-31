@@ -6,13 +6,13 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
-final class AddFilmController extends AbstractController
+class ProfilController extends AbstractController
 {
-    #[Route('/add/film', name: 'app_add_film')]
+    #[Route('/souscription', name: 'app_subscription')]
     public function index(): Response
     {
-        return $this->render('add_film/admin_add_films.html.twig', [
-            'controller_name' => 'AddFilmController',
+        return $this->render('Profil/subscriptions.html.twig', [
+            'controller_name' => 'ProfilController',
         ]);
     }
 }
