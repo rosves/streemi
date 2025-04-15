@@ -11,7 +11,7 @@ class ListesController extends AbstractController
     #[Route('/listes', name: 'app_listes')]
     public function Listes(): Response
     {
-        return $this->render('Listes/lists.html.twig', [
+        return $this->render('Series/Listes/lists.html.twig', [
             'controller_name' => 'ListesController',
         ]);
     }
@@ -19,7 +19,7 @@ class ListesController extends AbstractController
     #[Route('/upload', name: 'app_upload')]
     public function Upload(): Response
     {
-        return $this->render('Listes/upload.html.twig', [
+        return $this->render('Series/Listes/upload.html.twig', [
             'controller_name' => 'ListesController',
         ]);
     }

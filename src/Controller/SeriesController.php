@@ -2,6 +2,9 @@
 
 namespace App\Controller;
 
+use App\Repository\CategoryRepository;
+use App\Repository\MediaRepository;
+use App\Repository\MovieRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -9,10 +12,14 @@ use Symfony\Component\Routing\Attribute\Route;
 class SeriesController extends AbstractController
 {
     #[Route('/category', name: 'app_category')]
-    public function Category(): Response
-    {
+    public function Category( CategoryRepository $category_repository, MediaRepository $media_repository): Response
+    {   
+        $categories = $category_repository->findAll();
+        $medias = $media_repository->findAll();
+
         return $this->render('Series/category.html.twig', [
-            'controller_name' => 'SeriesController',
+            'categories' => $categories,
+            'medias' => $medias,
         ]);
     }
 
